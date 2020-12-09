@@ -1,0 +1,10 @@
+## 3rd-party
+FFmpeg-release-3.4
+ffmpeg
+
+## Builds
+build
+
+## macOS
+.DS_Store
+._.*
