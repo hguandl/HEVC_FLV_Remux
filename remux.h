@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2013 Stefano Sabatini
- *               2020 Hao Guan
+ * Copyright (c) 2020 Hao Guan             
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,26 +22,14 @@
 
 /**
  * @file
- * Main program of libremux.
+ * Remux streams from one container format to another.
  */
 
-#include <stdio.h>
-
-#include "remux.h"
-
-int main(int argc, char **argv)
-{
-    const char *in_filename, *out_filename;
-
-    if (argc < 3) {
-        printf("usage: %s input output\n"
-               "API example program to remux a media file with libavformat and libavcodec.\n"
-               "The output format is guessed according to the file extension.\n"
-               "\n", argv[0]);
-        return 1;
-    }
-    in_filename  = argv[1];
-    out_filename = argv[2];
-
-    return remux(in_filename, out_filename);
-}
+/**
+ * Remux a media from in_filename to out_filename.
+ * @param in_filename URL of input file
+ * @param out_filename URL of output file
+ *
+ * @return 0 if no error occurs, otherwise 1
+ */
+int remux(const char *in_filename, const char *out_filename);
