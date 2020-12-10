@@ -25,6 +25,13 @@
  * Remux streams from one container format to another.
  */
 
+#ifndef REMUX_H
+#define REMUX_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Remux a media from in_filename to out_filename.
  * @param in_filename URL of input file
@@ -33,3 +40,9 @@
  * @return 0 if no error occurs, otherwise 1
  */
 int remux(const char *in_filename, const char *out_filename);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
