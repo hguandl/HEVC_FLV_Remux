@@ -49,12 +49,12 @@ if(UNIX)
     else()
         set(LIB_SUFFIX .so)
     endif()
-endif
+endif()
 
 list(APPEND FFmpeg_LIBS
-            ${CMAKE_INSTALL_PREFIX}/lib/libavutil.${LIB_SUFFIX}
-            ${CMAKE_INSTALL_PREFIX}/lib/libavformat.${LIB_SUFFIX}
-            ${CMAKE_INSTALL_PREFIX}/lib/libavcodec.${LIB_SUFFIX})
+            ${CMAKE_INSTALL_PREFIX}/lib/libavutil${LIB_SUFFIX}
+            ${CMAKE_INSTALL_PREFIX}/lib/libavformat${LIB_SUFFIX}
+            ${CMAKE_INSTALL_PREFIX}/lib/libavcodec${LIB_SUFFIX})
 
 add_library(remux remux.c)
 add_executable(remuxing remuxing.c)
