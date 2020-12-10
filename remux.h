@@ -32,6 +32,13 @@
 extern "C" {
 #endif
 
+#include <libavutil/rational.h>
+
+/**
+ * Rational number '1'
+ */
+#define ONE_Q (AVRational){1, 1}
+
 /**
  * Remux a media from in_filename to out_filename.
  * @param in_filename URL of input file

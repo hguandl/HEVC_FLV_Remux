@@ -38,69 +38,76 @@ int remux(const char *in_filename, const char *out_filename)
     AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
     AVPacket pkt;
     int ret, i;
-    int64_t cts;
+    int64_t ts_offset;
     int stream_index = 0;
     int *stream_mapping = NULL;
-    int64_t *init_dts = NULL;
     int stream_mapping_size = 0;
+
     av_register_all();
+
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
         fprintf(stderr, "Could not open input file '%s'", in_filename);
         goto end;
     }
+
     if ((ret = avformat_find_stream_info(ifmt_ctx, 0)) < 0) {
         fprintf(stderr, "Failed to retrieve input stream information");
         goto end;
     }
+
     av_dump_format(ifmt_ctx, 0, in_filename, 0);
+
     avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, out_filename);
     if (!ofmt_ctx) {
         fprintf(stderr, "Could not create output context\n");
         ret = AVERROR_UNKNOWN;
         goto end;
     }
+
     stream_mapping_size = ifmt_ctx->nb_streams;
     stream_mapping = av_mallocz_array(stream_mapping_size, sizeof(*stream_mapping));
     if (!stream_mapping) {
         ret = AVERROR(ENOMEM);
         goto end;
     }
-    init_dts = av_mallocz_array(stream_mapping_size, sizeof(int64_t));
-    if (!init_dts) {
-        ret = AVERROR(ENOMEM);
-        goto end;
-    }
-    memset(init_dts, 0, sizeof(int64_t) * stream_mapping_size);
+
     ofmt = ofmt_ctx->oformat;
+
     for (i = 0; i < ifmt_ctx->nb_streams; i++) {
         AVStream *out_stream;
         AVStream *in_stream = ifmt_ctx->streams[i];
         AVCodecParameters *in_codecpar = in_stream->codecpar;
+
         if (in_codecpar->codec_type != AVMEDIA_TYPE_AUDIO &&
             in_codecpar->codec_type != AVMEDIA_TYPE_VIDEO &&
             in_codecpar->codec_type != AVMEDIA_TYPE_SUBTITLE) {
             stream_mapping[i] = -1;
             continue;
         }
+
         stream_mapping[i] = stream_index++;
+
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
         if (!out_stream) {
             fprintf(stderr, "Failed allocating output stream\n");
             ret = AVERROR_UNKNOWN;
             goto end;
         }
+
         ret = avcodec_parameters_copy(out_stream->codecpar, in_codecpar);
         if (ret < 0) {
             fprintf(stderr, "Failed to copy codec parameters\n");
             goto end;
         }
-        if (out_stream->codecpar->codec_id == AV_CODEC_ID_H265) {
+
+        if (out_stream->codecpar->codec_id == AV_CODEC_ID_HEVC) {
             out_stream->codecpar->codec_tag = MKTAG('h', 'v', 'c', '1');
         } else {
             out_stream->codecpar->codec_tag = 0;
         }
     }
     av_dump_format(ofmt_ctx, 0, out_filename, 1);
+
     if (!(ofmt->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
@@ -108,55 +115,61 @@ int remux(const char *in_filename, const char *out_filename)
             goto end;
         }
     }
+
     ret = avformat_write_header(ofmt_ctx, NULL);
     if (ret < 0) {
         fprintf(stderr, "Error occurred when opening output file\n");
         goto end;
     }
+
     while (1) {
         AVStream *in_stream, *out_stream;
+
         ret = av_read_frame(ifmt_ctx, &pkt);
         if (ret < 0)
             break;
-        in_stream  = ifmt_ctx->streams[pkt.stream_index];
+
+        in_stream = ifmt_ctx->streams[pkt.stream_index];
         if (pkt.stream_index >= stream_mapping_size ||
             stream_mapping[pkt.stream_index] < 0) {
             av_packet_unref(&pkt);
             continue;
         }
+
         pkt.stream_index = stream_mapping[pkt.stream_index];
         out_stream = ofmt_ctx->streams[pkt.stream_index];
+
+        /* apply timestamp offset */
+        ts_offset = av_rescale_q(-ifmt_ctx->start_time, in_stream->time_base, ONE_Q);
+        pkt.pts += ts_offset;
+        pkt.dts += ts_offset;
+
         /* copy packet */
         pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
         pkt.dts = av_rescale_q_rnd(pkt.dts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
         pkt.duration = av_rescale_q(pkt.duration, in_stream->time_base, out_stream->time_base);
-        /* shift pts & dts */
-        if (init_dts[pkt.stream_index] == 0) {
-            init_dts[pkt.stream_index] = pkt.dts;
-        }
-        cts = pkt.pts - pkt.dts;
-        pkt.dts -= init_dts[pkt.stream_index];
-        pkt.pts = pkt.dts + cts;
         pkt.pos = -1;
-        pkt.stream_index = out_stream->index;
-        ret = av_interleaved_write_frame(ofmt_ctx, &pkt);
-        if (ret < 0) {
-            fprintf(stderr, "Error muxing packet\n");
-            break;
-        }
+
+        av_interleaved_write_frame(ofmt_ctx, &pkt);
         av_packet_unref(&pkt);
     }
+
     av_write_trailer(ofmt_ctx);
 end:
+
     avformat_close_input(&ifmt_ctx);
+
     /* close output */
     if (ofmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
         avio_closep(&ofmt_ctx->pb);
     avformat_free_context(ofmt_ctx);
+
     av_freep(&stream_mapping);
+
     if (ret < 0 && ret != AVERROR_EOF) {
         fprintf(stderr, "Error occurred: %s\n", av_err2str(ret));
         return 1;
     }
+
     return 0;
 }

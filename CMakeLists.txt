@@ -12,10 +12,17 @@ find_package(PkgConfig REQUIRED)
 set(ENV{PKG_CONFIG_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/lib/pkgconfig)
 pkg_check_modules(libffmpeg REQUIRED libavutil libavformat libavcodec)
 
+list(REMOVE_DUPLICATES libffmpeg_LDFLAGS)
+list(REMOVE_DUPLICATES libffmpeg_LINK_LIBRARIES)
+
 list(FIND libffmpeg_LDFLAGS -pthread index)
 if(NOT ${index} EQUAL -1)
     list(APPEND extra_LIBRARIES pthread)
 endif()
+
+set(MACOS_FRAMEWORKS ${libffmpeg_LDFLAGS})
+list(FILTER MACOS_FRAMEWORKS INCLUDE REGEX "-Wl,-framework,.+")
+list(APPEND extra_LIBRARIES ${MACOS_FRAMEWORKS})
 
 add_library(remux remux.c)
 add_executable(remuxing remuxing.c)
