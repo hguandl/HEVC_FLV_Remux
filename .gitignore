@@ -1,10 +1,9 @@
-## 3rd-party
-FFmpeg-release-3.4.tar.gz
-FFmpeg-release-3.4
-
 ## Builds
 build
 
 ## macOS
 .DS_Store
 ._.*
+
+## VSCode
+.vscode
