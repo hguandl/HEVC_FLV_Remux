@@ -32,7 +32,7 @@
 
 int main(int argc, char **argv)
 {
-    const char *in_filename, *out_filename;
+    const char *in_filename, *out_filename, *http_header;
 
     if (argc < 3) {
         printf("usage: %s input output\n"
@@ -44,5 +44,9 @@ int main(int argc, char **argv)
     in_filename  = argv[1];
     out_filename = argv[2];
 
-    return remux(in_filename, out_filename);
+    if (argc >= 4) {
+        http_header = argv[3];
+    }
+
+    return remux(in_filename, out_filename, http_header);
 }

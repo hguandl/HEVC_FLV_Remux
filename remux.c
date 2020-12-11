@@ -27,12 +27,20 @@
  * Use forked FFmpeg by ksvc to handle unofficial FLV with HEVC stream.
  */
 
+#include <signal.h>
+
 #include <libavutil/timestamp.h>
 #include <libavformat/avformat.h>
 
 #include "remux.h"
 
-int remux(const char *in_filename, const char *out_filename)
+static int keyboard_interrupt = 0;
+
+static void handler_stop(int sig) {
+    keyboard_interrupt = 1;
+}
+
+int remux(const char *in_filename, const char *out_filename, const char *http_headers)
 {
     AVOutputFormat *ofmt = NULL;
     AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
@@ -42,16 +50,22 @@ int remux(const char *in_filename, const char *out_filename)
     int stream_index = 0;
     int *stream_mapping = NULL;
     int stream_mapping_size = 0;
+    AVDictionary *options = NULL;
 
     av_register_all();
+    avformat_network_init();
 
-    if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
-        fprintf(stderr, "Could not open input file '%s'", in_filename);
+    if (http_headers) {
+        av_dict_set(&options, "headers", http_headers, AV_DICT_APPEND);
+    }
+
+    if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, &options)) < 0) {
+        fprintf(stderr, "Could not open input file '%s'\n", in_filename);
         goto end;
     }
 
     if ((ret = avformat_find_stream_info(ifmt_ctx, 0)) < 0) {
-        fprintf(stderr, "Failed to retrieve input stream information");
+        fprintf(stderr, "Failed to retrieve input stream information\n");
         goto end;
     }
 
@@ -122,7 +136,14 @@ int remux(const char *in_filename, const char *out_filename)
         goto end;
     }
 
+    (void)signal(SIGINT, handler_stop);
+
     while (1) {
+        if (keyboard_interrupt) {
+            ret = AVERROR_EXIT;
+            break;
+        }
+
         AVStream *in_stream, *out_stream;
 
         ret = av_read_frame(ifmt_ctx, &pkt);
@@ -165,6 +186,11 @@ end:
     avformat_free_context(ofmt_ctx);
 
     av_freep(&stream_mapping);
+
+    if (ret == AVERROR_EXIT) {
+        fprintf(stderr, "%s\n", av_err2str(ret));
+        return -1;
+    }
 
     if (ret < 0 && ret != AVERROR_EOF) {
         fprintf(stderr, "Error occurred: %s\n", av_err2str(ret));

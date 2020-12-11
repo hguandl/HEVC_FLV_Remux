@@ -6,16 +6,16 @@
 
 static PyObject *remux_remux(PyObject *self, PyObject *args) {
     int ret;
-    char *in_filename, *out_filename;
+    char *in_filename, *out_filename, *http_headers;
     
-    ret = PyArg_ParseTuple(args, "ss", &in_filename, &out_filename);
+    ret = PyArg_ParseTuple(args, "sss", &in_filename, &out_filename, &http_headers);
 
     printf("%s\n", in_filename);
     if (!ret) {
         return Py_None;
     }
 
-    ret = remux(in_filename, out_filename);
+    ret = remux(in_filename, out_filename, http_headers);
 
     return PyLong_FromLong(ret);
 }

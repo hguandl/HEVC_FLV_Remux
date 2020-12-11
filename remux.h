@@ -46,7 +46,7 @@ extern "C" {
  *
  * @return 0 if no error occurs, otherwise 1
  */
-int remux(const char *in_filename, const char *out_filename);
+int remux(const char *in_filename, const char *out_filename, const char *http_headers);
 
 #ifdef __cplusplus
 }
