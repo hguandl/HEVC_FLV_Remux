@@ -14,61 +14,28 @@ string(APPEND CMAKE_INSTALL_PREFIX
               "/site-packages"
               "/remux")
 
-list(APPEND FFMPEG_CONF_ARGS
-    "--prefix=${CMAKE_INSTALL_PREFIX}"
-    "--disable-static"
-    "--enable-shared"
-    "--disable-programs"
-    "--disable-doc"
-    "--disable-avdevice"
-    "--disable-swresample"
-    "--disable-swscale"
-    "--disable-avfilter"
-    "--disable-everything"
-    "--enable-decoder=aac,h264,hevc"
-    "--enable-parser=aac,h264,hevc"
-    "--enable-demuxer=aac,flv,live_flv,h264,hevc"
-    "--enable-muxer=aac,flv,h264,hevc,mp4,m4v,mov"
-    "--enable-protocol=file,http,httpproxy,https,tls_openssl"
-    "--enable-openssl"
-    "--disable-securetransport")
-
-include(ExternalProject)
-
-ExternalProject_Add(
-    FFmpeg
-    URL "https://github.com/ksvc/FFmpeg/archive/release/3.4.tar.gz"
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure ${FFMPEG_CONF_ARGS}
-    BUILD_COMMAND ${MAKE}
-    INSTALL_COMMAND ${MAKE}
-)
-
-if(UNIX)
-    if(APPLE)
-        set(LIB_SUFFIX .dylib)
-    else()
-        set(LIB_SUFFIX .so)
-    endif()
+if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/lib/pkgconfig)
+    MESSAGE(FATAL_ERROR "Embedded FFmpeg not built.\n"
+                        "Please run the following script first:\n"
+                        "  `${CMAKE_CURRENT_SOURCE_DIR}/build_ffmpeg.sh`")
 endif()
 
-list(APPEND FFmpeg_LIBS
-            ${CMAKE_INSTALL_PREFIX}/lib/libavutil${LIB_SUFFIX}
-            ${CMAKE_INSTALL_PREFIX}/lib/libavformat${LIB_SUFFIX}
-            ${CMAKE_INSTALL_PREFIX}/lib/libavcodec${LIB_SUFFIX})
+find_package(PkgConfig REQUIRED)
+set(ENV{PKG_CONFIG_PATH} ${CMAKE_INSTALL_PREFIX}/lib/pkgconfig)
+pkg_check_modules(FFmpeg REQUIRED libavutil libavformat libavcodec)
 
 add_library(remux remux.c)
 add_executable(remuxing remuxing.c)
 add_library(remuxmodule SHARED remuxmodule.c)
-add_dependencies(remux FFmpeg)
 
 target_include_directories(remux PUBLIC ${CMAKE_INSTALL_PREFIX}/include)
-target_link_libraries(remux PUBLIC ${FFmpeg_LIBS})
+target_link_libraries(remux PUBLIC ${FFmpeg_LINK_LIBRARIES})
 
 target_include_directories(remuxing PUBLIC ${CMAKE_INSTALL_PREFIX}/include)
-target_link_libraries(remuxing PUBLIC ${FFmpeg_LIBS} remux)
+target_link_libraries(remuxing PUBLIC ${FFmpeg_LINK_LIBRARIES} remux)
 
 target_include_directories(remuxmodule PUBLIC ${Python3_INCLUDE_DIRS} ${CMAKE_INSTALL_PREFIX}/include)
-target_link_libraries(remuxmodule PUBLIC ${FFmpeg_LIBS} ${Python3_LIBRARIES} remux)
+target_link_libraries(remuxmodule PUBLIC ${FFmpeg_LINK_LIBRARIES} ${Python3_LIBRARIES} remux)
 set_target_properties(remuxmodule PROPERTIES OUTPUT_NAME remux PREFIX "" SUFFIX .so)
 
 if(CMAKE_BUILD_TYPE STREQUAL Release)

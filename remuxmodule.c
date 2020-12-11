@@ -21,7 +21,7 @@ static PyObject *remux_remux(PyObject *self, PyObject *args) {
 }
 
 static PyObject *remux_version(PyObject *self, PyObject *args) {
-    return PyBytes_FromFormat("%s", "0.1");
+    return PyBytes_FromString("0.1");
 }
 
 static PyMethodDef RemuxMethods[] = {
