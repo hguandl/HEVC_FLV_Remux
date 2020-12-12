@@ -7,7 +7,7 @@ from datetime import datetime
 
 import requests
 
-from remux import remux
+import remux
 
 user_agent = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6)"

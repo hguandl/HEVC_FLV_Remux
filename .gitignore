@@ -1,5 +1,7 @@
 ## Builds
 build
+FFmpeg-stage
+FFmpeg-build
 
 ## macOS
 .DS_Store

@@ -1,0 +1,6 @@
+[submodule "cJSON"]
+	path = cJSON
+	url = https://github.com/DaveGamble/cJSON.git
+[submodule "FFmpeg"]
+	path = FFmpeg
+	url = https://github.com/ksvc/FFmpeg.git

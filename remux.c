@@ -32,6 +32,7 @@
 #include <libavutil/timestamp.h>
 #include <libavformat/avformat.h>
 
+#include "libavutil/log.h"
 #include "remux.h"
 
 static int keyboard_interrupt = 0;
@@ -54,6 +55,7 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
 
     av_register_all();
     avformat_network_init();
+    av_log_set_level(AV_LOG_WARNING);
 
     if (http_headers) {
         av_dict_set(&options, "headers", http_headers, AV_DICT_APPEND);
