@@ -31,7 +31,7 @@ pkg_check_modules(FFmpeg REQUIRED libavutil libavformat libavcodec)
 SET(ENABLE_TARGET_EXPORT OFF)
 SET(CJSON_BUILD_SHARED_LIBS OFF)
 SET(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON)
-add_subdirectory(cJSON)
+add_subdirectory(cJSON EXCLUDE_FROM_ALL)
 
 add_library(remux STATIC remux.c)
 add_executable(remuxing remuxing.c)
