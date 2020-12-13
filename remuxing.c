@@ -32,7 +32,7 @@
 
 int main(int argc, char **argv)
 {
-    const char *in_filename, *out_filename, *http_header;
+    const char *in_filename, *out_filename, *http_header = NULL;
 
     if (argc < 3) {
         printf("usage: %s input output\n"
