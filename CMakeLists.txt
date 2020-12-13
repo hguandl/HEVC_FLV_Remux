@@ -46,7 +46,8 @@ target_link_libraries(remuxing PUBLIC remux ${FFmpeg_LINK_LIBRARIES})
 
 target_include_directories(bili-live PUBLIC CURL::libcurl cjson ${FFmpeg_INCLUDE_DIRS})
 target_link_directories(bili-live PUBLIC ${FFmpeg_LIBRARY_DIRS})
-target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux ${FFmpegStatic_LIBRARIES})
+#target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux)
+target_link_libraries(bili-live PUBLIC CURL::libcurl cjson)
 
 target_include_directories(remuxmodule PUBLIC ${Python3_INCLUDE_DIRS} ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remuxmodule PUBLIC ${Python3_LIBRARIES} ${FFmpeg_LINK_LIBRARIES} remux)

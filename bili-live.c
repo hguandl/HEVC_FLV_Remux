@@ -9,7 +9,7 @@
 #include <cJSON.h>
 
 #include "bili-live.h"
-#include "remux.h"
+// #include "remux.h"
 
 static size_t max_api_size;
 static char   *ffmpeg_headers;
@@ -37,7 +37,7 @@ static int bili_log(const char *tag, const char *message, ...) {
     return rc;
 }
 
-static size_t write_data(void *data, size_t size, size_t nmemb, void *userp) {
+static size_t write_to_mem(void *data, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     memory *mem = (memory *)userp;
  
@@ -49,6 +49,11 @@ static size_t write_data(void *data, size_t size, size_t nmemb, void *userp) {
     mem->response[mem->size] = 0;
     
     return realsize;
+}
+
+static size_t write_to_file(void *ptr, size_t size, size_t nmemb, void *stream) {
+    size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
+    return written;
 }
 
 CURL *bili_make_handle() {
@@ -95,7 +100,7 @@ cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn) {
 
     curl_easy_setopt(handle, CURLOPT_URL, api_url);
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, (void *)&mem);
-    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_to_mem);
 
     res = curl_easy_perform(handle);
 
@@ -150,7 +155,7 @@ int main(int argc, const char *argv[]) {
     sscanf(argv[1], "%u", &room_id);
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
 
-    (void)signal(SIGINT, handler_stop);
+    // (void)signal(SIGINT, handler_stop);
     int ret;
     while (!keyboard_interrupt) {
         if (bili_update_room(room)) {
@@ -188,12 +193,27 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
     char *url = bili_get_stream_url(room, codec, qn);
     char filename[4096];
     struct tm *now = time_now();
-    snprintf(filename, 4095, "%d-%02d-%02d_%02d%02d%02d-%u.mp4",
+    snprintf(filename, 4095, "%d-%02d-%02d_%02d%02d%02d-%u.flv",
                              now->tm_year + 1900, now->tm_mon, now->tm_mday,
                              now->tm_hour, now->tm_min, now->tm_sec,
                              room->room_id);
-    ret = remux(url, filename, ffmpeg_headers);
+    // ret = remux(url, filename, ffmpeg_headers);
+    FILE *fp = fopen(filename, "wb");
+    if (fp) {
+        CURL *handle = curl_easy_init();
+        
+        curl_easy_setopt(handle, CURLOPT_URL, url);
 
+        curl_easy_setopt(handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(handle, CURLOPT_USERAGENT, BILI_USER_AGENT);
+
+        curl_easy_setopt(handle, CURLOPT_WRITEDATA, fp);
+        curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_to_file);
+
+        curl_easy_perform(handle);
+        curl_easy_cleanup(handle);
+    }
     free(url);
 
     return ret;
