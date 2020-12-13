@@ -29,10 +29,10 @@
 
 #include <signal.h>
 
+#include <libavutil/log.h>
 #include <libavutil/timestamp.h>
 #include <libavformat/avformat.h>
 
-#include "libavutil/log.h"
 #include "remux.h"
 
 static int keyboard_interrupt = 0;
@@ -47,10 +47,11 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
     AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
     AVPacket pkt;
     int ret, i;
-    int64_t ts_offset;
     int stream_index = 0;
     int *stream_mapping = NULL;
     int stream_mapping_size = 0;
+    int64_t *in_last_dts = NULL;
+    int64_t *out_last_dts = NULL;
     AVDictionary *options = NULL;
 
     av_register_all();
@@ -83,6 +84,18 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
     stream_mapping_size = ifmt_ctx->nb_streams;
     stream_mapping = av_mallocz_array(stream_mapping_size, sizeof(*stream_mapping));
     if (!stream_mapping) {
+        ret = AVERROR(ENOMEM);
+        goto end;
+    }
+
+    in_last_dts = av_mallocz_array(stream_mapping_size, sizeof(int64_t));
+    if (!in_last_dts) {
+        ret = AVERROR(ENOMEM);
+        goto end;
+    }
+
+    out_last_dts = av_mallocz_array(stream_mapping_size, sizeof(int64_t));
+    if (!out_last_dts) {
         ret = AVERROR(ENOMEM);
         goto end;
     }
@@ -121,6 +134,8 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
         } else {
             out_stream->codecpar->codec_tag = 0;
         }
+
+        in_last_dts[i] = AV_NOPTS_VALUE;
     }
     av_dump_format(ofmt_ctx, 0, out_filename, 1);
 
@@ -162,10 +177,38 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
         pkt.stream_index = stream_mapping[pkt.stream_index];
         out_stream = ofmt_ctx->streams[pkt.stream_index];
 
-        /* apply timestamp offset */
-        ts_offset = av_rescale_q(-ifmt_ctx->start_time, in_stream->time_base, ONE_Q);
-        pkt.pts += ts_offset;
-        pkt.dts += ts_offset;
+        /* rescale DTS to be monotonic increasing */
+        int64_t dts;
+        do {
+            if (in_last_dts[pkt.stream_index] == AV_NOPTS_VALUE) {
+                dts = 0;
+                break;
+            }
+
+            if (pkt.dts >= in_last_dts[pkt.stream_index]) {
+                if (pkt.dts > in_last_dts[pkt.stream_index] + 1000) {
+                    dts = out_last_dts[pkt.stream_index] + 10;
+                } else {
+                    dts = pkt.dts - in_last_dts[pkt.stream_index] + out_last_dts[pkt.stream_index];
+                }
+            } else {
+                if (in_last_dts[pkt.stream_index] - pkt.dts < 5000) {
+                    dts = pkt.dts - in_last_dts[pkt.stream_index] + out_last_dts[pkt.stream_index];
+                    if (dts < 0) {
+                        dts = 1;
+                    }
+                } else {
+                    dts = out_last_dts[pkt.stream_index] + 10;
+                }
+            }
+        } while (0);
+        in_last_dts[pkt.stream_index] = pkt.dts;
+        out_last_dts[pkt.stream_index] = dts;
+
+        /* shift pts */
+        int64_t cts = pkt.pts - pkt.dts;
+        pkt.dts = dts;
+        pkt.pts = dts + cts;
 
         /* copy packet */
         pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
@@ -188,6 +231,8 @@ end:
     avformat_free_context(ofmt_ctx);
 
     av_freep(&stream_mapping);
+    av_freep(&in_last_dts);
+    av_freep(&out_last_dts);
 
     if (ret == AVERROR_EXIT) {
         fprintf(stderr, "%s\n", av_err2str(ret));
