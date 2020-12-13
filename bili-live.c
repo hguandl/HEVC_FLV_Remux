@@ -9,7 +9,7 @@
 #include <cJSON.h>
 
 #include "bili-live.h"
-// #include "remux.h"
+#include "remux.h"
 
 static size_t max_api_size;
 static char   *ffmpeg_headers;
@@ -155,7 +155,7 @@ int main(int argc, const char *argv[]) {
     sscanf(argv[1], "%u", &room_id);
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
 
-    // (void)signal(SIGINT, handler_stop);
+    (void)signal(SIGINT, handler_stop);
     int ret;
     while (!keyboard_interrupt) {
         if (bili_update_room(room)) {
@@ -193,27 +193,11 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
     char *url = bili_get_stream_url(room, codec, qn);
     char filename[4096];
     struct tm *now = time_now();
-    snprintf(filename, 4095, "%d-%02d-%02d_%02d%02d%02d-%u.flv",
-                             now->tm_year + 1900, now->tm_mon, now->tm_mday,
+    snprintf(filename, 4095, "%d%02d%02d_%02d%02d%02d-%u.mp4",
+                             now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
                              now->tm_hour, now->tm_min, now->tm_sec,
                              room->room_id);
-    // ret = remux(url, filename, ffmpeg_headers);
-    FILE *fp = fopen(filename, "wb");
-    if (fp) {
-        CURL *handle = curl_easy_init();
-        
-        curl_easy_setopt(handle, CURLOPT_URL, url);
-
-        curl_easy_setopt(handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
-        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(handle, CURLOPT_USERAGENT, BILI_USER_AGENT);
-
-        curl_easy_setopt(handle, CURLOPT_WRITEDATA, fp);
-        curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_to_file);
-
-        curl_easy_perform(handle);
-        curl_easy_cleanup(handle);
-    }
+    ret = remux(url, filename, ffmpeg_headers);
     free(url);
 
     return ret;
