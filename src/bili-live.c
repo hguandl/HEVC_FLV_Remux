@@ -11,8 +11,9 @@
 #include "bili-live.h"
 #include "remux.h"
 
-static size_t max_api_size;
-static char   *ffmpeg_headers;
+static size_t     max_api_size;
+static char       *ffmpeg_headers;
+struct curl_slist *curl_headers;
 
 static int keyboard_interrupt = 0;
 
@@ -66,13 +67,7 @@ CURL *bili_make_handle() {
     curl_easy_setopt(handle, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip");
     curl_easy_setopt(handle, CURLOPT_USERAGENT, BILI_USER_AGENT);
-
-    struct curl_slist *chunk = NULL;
-    for (int i = 0; i < BILI_HTTP_HEADER_CNT; ++i) {
-        chunk = curl_slist_append(chunk, BILI_HTTP_HEADERS[i]);
-    }
-
-    curl_easy_setopt(handle, CURLOPT_HTTPHEADER, chunk);
+    curl_easy_setopt(handle, CURLOPT_HTTPHEADER, curl_headers);
 
     return handle;
 }
@@ -103,9 +98,6 @@ cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn) {
         fprintf(stderr, "cURL error\n");
         return NULL;
     }
-
-    char *ct = NULL;
-    curl_easy_getinfo(handle, CURLINFO_CONTENT_TYPE, &ct);
 
     cJSON *json = cJSON_Parse(mem.response);
 
@@ -138,6 +130,10 @@ int main(int argc, const char *argv[]) {
     max_api_size = strlen(BILI_XLIVE_API_V2) + 10 + 10 + 1;
     ffmpeg_headers = (char *)malloc(strlen(BILI_USER_AGENT) + strlen("User-Agent: ") + 3);
     sprintf(ffmpeg_headers, "User-Agent: %s\r\n", BILI_USER_AGENT);
+    curl_headers = NULL;
+    for (int i = 0; i < BILI_HTTP_HEADER_CNT; ++i) {
+        curl_headers = curl_slist_append(curl_headers, BILI_HTTP_HEADERS[i]);
+    }
 
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -168,6 +164,7 @@ int main(int argc, const char *argv[]) {
     bili_free_room(room);
     curl_global_cleanup();
     free(ffmpeg_headers);
+    curl_slist_free_all(curl_headers);
     return 0;
 }
 
@@ -175,7 +172,7 @@ int bili_update_room(BILI_LIVE_ROOM* room) {
     cJSON_Delete(room->playurl_info);
     room->playurl_info = bili_fetch_api(room, 0);
 
-    return !cJSON_IsNull(room->playurl_info);
+    return room->playurl_info && !cJSON_IsNull(room->playurl_info);
 }
 
 int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
