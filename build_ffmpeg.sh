@@ -5,13 +5,13 @@ pushd `dirname $0`
 PROJECT_ROOT=`pwd`
 popd
 
-if [ ! -d $PROJECT_ROOT/FFmpeg-stage ]; then
-    mkdir -p $PROJECT_ROOT/FFmpeg-stage
+if [ ! -d $PROJECT_ROOT/build/FFmpeg/BuildFiles ]; then
+    mkdir -p $PROJECT_ROOT/build/FFmpeg/BuildFiles
 fi
 
-pushd $PROJECT_ROOT/FFmpeg-stage
+pushd $PROJECT_ROOT/build/FFmpeg/BuildFiles
 $PROJECT_ROOT/FFmpeg/configure \
-                     --prefix=$PROJECT_ROOT/FFmpeg-build \
+                     --prefix=$PROJECT_ROOT/build/FFmpeg \
                      --disable-programs \
                      --disable-doc \
                      --disable-avdevice \

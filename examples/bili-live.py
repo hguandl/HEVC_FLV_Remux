@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import json
-import os
+import sys
 import time
 from datetime import datetime
 
-import requests
-
 import remux
+import requests
 
 user_agent = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6)"
@@ -92,7 +91,7 @@ class BiliLiveRoom(object):
         qn = codec_qn[codec_name]
         ret = remux.remux(
             self._get_stream_url(codec_name, qn),
-            f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}'
+            f'{datetime.now().strftime("%Y%m%d_%H%M%S")}'
             f'-{self.room_id}.mp4',
             f'User-Agent: {user_agent}\r\n'
         )
@@ -117,5 +116,5 @@ class BiliLiveRoom(object):
 
 
 if __name__ == "__main__":
-    room = BiliLiveRoom("744393") # 4588774
+    room = BiliLiveRoom(sys.argv[1])
     room.watch_forever()
