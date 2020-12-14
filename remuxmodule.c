@@ -7,7 +7,7 @@
 static PyObject *remux_remux(PyObject *self, PyObject *args) {
     int ret;
     char *in_filename, *out_filename, *http_headers;
-    
+
     ret = PyArg_ParseTuple(args, "sss", &in_filename, &out_filename, &http_headers);
 
     printf("%s\n", in_filename);
@@ -30,7 +30,7 @@ static PyMethodDef RemuxMethods[] = {
 
     {"version", remux_version, METH_VARARGS,
      "Return the version of remux."},
-    
+
     {NULL, NULL, 0, NULL}
 };
 

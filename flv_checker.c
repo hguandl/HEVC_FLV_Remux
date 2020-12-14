@@ -50,12 +50,12 @@ uint32_t check(FILE *origin, FILE *dest) {
         fread(buf, 1, 3, origin);
         uint32_t data_size = (buf[0] << 16) + (buf[1] << 8) + buf[2];
         fwrite(buf, 1, 3, dest);
-        
+
         fread(buf, 1, 4, origin);
         uint32_t dts = (buf[0] << 16) + (buf[1] << 8) + buf[2] + (buf[3] << 24);
 
         uint32_t out_dts = 0;
-        
+
         if (tag_type == FLV_TAGTYPE_AUDIO || tag_type == FLV_TAGTYPE_VIDEO) {
             out_dts = fix_ts(dest, dts, tag_type - 8);
         }

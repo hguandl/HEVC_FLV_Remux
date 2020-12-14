@@ -13,7 +13,7 @@ user_agent = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6)"
     " AppleWebKit/605.1.15 (KHTML, like Gecko)"
     " Version/14.0.1 Safari/605.1.15"
-) 
+)
 
 headers = {
     "User-Agent": user_agent,
@@ -31,7 +31,7 @@ class BiliLiveRoom(object):
         self.session = requests.Session()
         self.session.headers.update(headers)
 
-    
+
     def _get_api_url(self, qn) -> str:
         return (
             "https://api.live.bilibili.com/xlive/web-room/v2/index"
@@ -45,7 +45,7 @@ class BiliLiveRoom(object):
             "&ptype=16"
         )
 
-    
+
     def _fetch_api(self, qn: int = 0) -> str:
         r = self.session.get(self._get_api_url(qn))
         api_data = json.loads(r.text)
@@ -68,7 +68,7 @@ class BiliLiveRoom(object):
 
         return codec_qn
 
-    
+
     def _get_stream_url(self, codec_name: str, qn: int) -> str:
         playurl_info = self._fetch_api(qn=qn)
         for codec in BiliLiveRoom._get_codecs(playurl_info):
@@ -79,7 +79,7 @@ class BiliLiveRoom(object):
                     f'{codec["url_info"][0]["extra"]}'
                 )
 
-    
+
     def update(self) -> None:
         self.playurl_info = self._fetch_api()
 
@@ -107,14 +107,14 @@ class BiliLiveRoom(object):
             time.sleep(60)
             self.update()
 
-    
+
     def watch_forever(self) -> None:
         while True:
             self.wait_for_live()
             ret = self.download()
             if ret == -1:
                 break
-        
+
 
 if __name__ == "__main__":
     room = BiliLiveRoom("744393") # 4588774

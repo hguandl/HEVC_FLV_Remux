@@ -62,7 +62,7 @@ typedef enum {
     HEVC_PRIORITY,
     AVC_PRIORITY,
 
-    // Use the best quality from specified codec. 
+    // Use the best quality from specified codec.
     // If not exists, fallback to the other one.
     HEVC_ONLY,
     AVC_ONLY
