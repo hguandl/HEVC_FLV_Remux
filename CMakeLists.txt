@@ -15,7 +15,7 @@ find_package(PkgConfig REQUIRED)
 set(ENV{PKG_CONFIG_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/FFmpeg-build/lib/pkgconfig)
 pkg_check_modules(FFmpeg REQUIRED libavutil libavformat libavcodec)
 
-list(FIND FFmpeg -pthread PTHREAD_OPTION)
+list(FIND FFmpeg_LDFLAGS -pthread PTHREAD_OPTION)
 if (NOT ${PTHREAD_OPTION} EQUAL -1)
     list(APPEND FFmpeg_LINK_LIBRARIES -pthread)
 endif()
@@ -25,9 +25,10 @@ SET(CJSON_BUILD_SHARED_LIBS OFF)
 SET(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON)
 add_subdirectory(cJSON EXCLUDE_FROM_ALL)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(remux STATIC remux.c)
-add_executable(remuxing remuxing.c)
 add_library(remuxmodule MODULE remuxmodule.c)
+add_executable(remuxing remuxing.c)
 add_executable(bili-live bili-live.c)
 add_executable(flv_checker flv_checker.c)
 
@@ -48,19 +49,18 @@ set_target_properties(remuxmodule PROPERTIES OUTPUT_NAME remux PREFIX "" SUFFIX 
 if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_custom_command(TARGET remuxing POST_BUILD COMMAND ${CMAKE_STRIP} remuxing)
     add_custom_command(TARGET bili-live POST_BUILD COMMAND ${CMAKE_STRIP} bili-live)
+    add_custom_command(TARGET remuxmodule POST_BUILD COMMAND ${CMAKE_STRIP} remux.so)
 endif()
 
 if(INSTALL_TO_USER_DIR)
     execute_process(COMMAND python3 -m site --user-site
                     OUTPUT_VARIABLE PYTHON_SITE_PATH
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(APPEND PYTHON_SITE_PATH /remux)
 else()
     string(APPEND PYTHON_SITE_PATH
                   ${CMAKE_INSTALL_PREFIX}
                   "/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
-                  "/site-packages"
-                  "/remux")
+                  "/site-packages")
 endif()
 
 install(TARGETS remuxmodule DESTINATION ${PYTHON_SITE_PATH})
