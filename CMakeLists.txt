@@ -47,8 +47,7 @@ target_link_libraries(remuxing PUBLIC remux ${FFmpeg_LINK_LIBRARIES})
 
 target_include_directories(bili-live PUBLIC CURL::libcurl cJSON ${FFmpeg_INCLUDE_DIRS})
 target_link_directories(bili-live PUBLIC ${FFmpeg_LIBRARY_DIRS})
-#target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux)
-target_link_libraries(bili-live PUBLIC CURL::libcurl cjson)
+target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux)
 
 target_include_directories(remuxmodule PUBLIC ${Python3_INCLUDE_DIRS} ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remuxmodule PUBLIC ${Python3_LIBRARIES} ${FFmpeg_LINK_LIBRARIES} remux)
@@ -56,7 +55,7 @@ set_target_properties(remuxmodule PROPERTIES OUTPUT_NAME remux PREFIX "" SUFFIX 
 
 if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_custom_command(TARGET remuxing POST_BUILD COMMAND ${CMAKE_STRIP} remuxing)
-    add_custom_command(TARGET remuxing POST_BUILD COMMAND ${CMAKE_STRIP} bili-live)
+    add_custom_command(TARGET bili-live POST_BUILD COMMAND ${CMAKE_STRIP} bili-live)
 endif()
 
 install(TARGETS remuxmodule DESTINATION ${PYTHON_SITE_PATH})

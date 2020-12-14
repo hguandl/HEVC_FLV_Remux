@@ -40,29 +40,24 @@ static int bili_log(const char *tag, const char *message, ...) {
 static size_t write_to_mem(void *data, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     memory *mem = (memory *)userp;
- 
+
     char *ptr = realloc(mem->response, mem->size + realsize + 1);
-    
+
     mem->response = ptr;
     memcpy(&(mem->response[mem->size]), data, realsize);
     mem->size += realsize;
     mem->response[mem->size] = 0;
-    
-    return realsize;
-}
 
-static size_t write_to_file(void *ptr, size_t size, size_t nmemb, void *stream) {
-    size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
-    return written;
+    return realsize;
 }
 
 CURL *bili_make_handle() {
     CURL *handle = curl_easy_init();
 
-    /* Important: use HTTP2 over HTTPS */ 
+    /* Important: use HTTP2 over HTTPS */
     curl_easy_setopt(handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
-    
-    /* For completeness */ 
+
+    /* For completeness */
     curl_easy_setopt(handle, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 10L);
@@ -76,7 +71,7 @@ CURL *bili_make_handle() {
     for (int i = 0; i < BILI_HTTP_HEADER_CNT; ++i) {
         chunk = curl_slist_append(chunk, BILI_HTTP_HEADERS[i]);
     }
-    
+
     curl_easy_setopt(handle, CURLOPT_HTTPHEADER, chunk);
 
     return handle;
@@ -179,7 +174,7 @@ int main(int argc, const char *argv[]) {
 int bili_update_room(BILI_LIVE_ROOM* room) {
     cJSON_Delete(room->playurl_info);
     room->playurl_info = bili_fetch_api(room, 0);
-    
+
     return !cJSON_IsNull(room->playurl_info);
 }
 
@@ -242,7 +237,7 @@ static const cJSON *bili_get_codecs(cJSON *playurl_info) {
     const cJSON *streams = cJSON_GetObjectItem(playurl, "stream");
     const cJSON *stream = cJSON_GetArrayItem(streams, 0);
     const cJSON *formats = cJSON_GetObjectItem(stream, "format");
-    const cJSON *format = cJSON_GetArrayItem(formats, 0); 
+    const cJSON *format = cJSON_GetArrayItem(formats, 0);
     const cJSON *codecs = cJSON_GetObjectItem(format, "codec");
     return codecs;
 }

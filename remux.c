@@ -185,21 +185,14 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
                 break;
             }
 
-            if (pkt.dts >= in_last_dts[pkt.stream_index]) {
+            if (pkt.dts > in_last_dts[pkt.stream_index]) {
                 if (pkt.dts > in_last_dts[pkt.stream_index] + 1000) {
                     dts = out_last_dts[pkt.stream_index] + 10;
                 } else {
                     dts = pkt.dts - in_last_dts[pkt.stream_index] + out_last_dts[pkt.stream_index];
                 }
             } else {
-                if (in_last_dts[pkt.stream_index] - pkt.dts < 5000) {
-                    dts = pkt.dts - in_last_dts[pkt.stream_index] + out_last_dts[pkt.stream_index];
-                    if (dts < 0) {
-                        dts = 1;
-                    }
-                } else {
-                    dts = out_last_dts[pkt.stream_index] + 10;
-                }
+                dts = out_last_dts[pkt.stream_index] + 10;
             }
         } while (0);
         in_last_dts[pkt.stream_index] = pkt.dts;
