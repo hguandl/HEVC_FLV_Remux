@@ -39,7 +39,6 @@ target_include_directories(remuxing PUBLIC src ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remuxing PUBLIC remux ${FFmpeg_LINK_LIBRARIES})
 
 target_include_directories(bili-live PUBLIC src CURL::libcurl cJSON ${FFmpeg_INCLUDE_DIRS})
-target_link_directories(bili-live PUBLIC ${FFmpeg_LIBRARY_DIRS})
 target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux)
 
 target_include_directories(remuxmodule PUBLIC src ${Python3_INCLUDE_DIRS} ${FFmpeg_INCLUDE_DIRS})
@@ -65,3 +64,5 @@ else()
 endif()
 
 install(TARGETS remuxmodule DESTINATION ${PYTHON_SITE_PATH})
+install(TARGETS remuxing)
+install(TARGETS bili-live)
