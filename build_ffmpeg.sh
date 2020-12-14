@@ -25,7 +25,8 @@ $PROJECT_ROOT/FFmpeg/configure \
                      --enable-muxer=aac,flv,h264,hevc,mp4,m4v,mov \
                      --enable-protocol=file,http,httpproxy,https,tls_openssl \
                      --enable-openssl \
-                     --disable-securetransport
+                     --disable-securetransport \
+                     --disable-x86asm
 
 make -j
 make install

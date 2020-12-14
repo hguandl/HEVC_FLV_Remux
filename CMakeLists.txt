@@ -5,19 +5,6 @@ project(HEVC_FLV_Remux)
 find_package(Python3 REQUIRED COMPONENTS Development)
 find_package(CURL REQUIRED)
 
-if(INSTALL_TO_USER_DIR)
-    execute_process(COMMAND python3 -m site --user-site
-                    OUTPUT_VARIABLE PYTHON_SITE_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(APPEND PYTHON_SITE_PATH /remux)
-else()
-    string(APPEND PYTHON_SITE_PATH
-                  "/usr/local/lib"
-                  "/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
-                  "/site-packages"
-                  "/remux")
-endif()
-
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/FFmpeg-build/lib/pkgconfig)
     MESSAGE(FATAL_ERROR "Embedded FFmpeg not built.\n"
                         "Please run the following script first:\n"
@@ -27,6 +14,11 @@ endif()
 find_package(PkgConfig REQUIRED)
 set(ENV{PKG_CONFIG_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/FFmpeg-build/lib/pkgconfig)
 pkg_check_modules(FFmpeg REQUIRED libavutil libavformat libavcodec)
+
+list(FIND FFmpeg -pthread PTHREAD_OPTION)
+if (NOT ${PTHREAD_OPTION} EQUAL -1)
+    list(APPEND FFmpeg_LINK_LIBRARIES -pthread)
+endif()
 
 SET(ENABLE_TARGET_EXPORT OFF)
 SET(CJSON_BUILD_SHARED_LIBS OFF)
@@ -56,6 +48,19 @@ set_target_properties(remuxmodule PROPERTIES OUTPUT_NAME remux PREFIX "" SUFFIX 
 if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_custom_command(TARGET remuxing POST_BUILD COMMAND ${CMAKE_STRIP} remuxing)
     add_custom_command(TARGET bili-live POST_BUILD COMMAND ${CMAKE_STRIP} bili-live)
+endif()
+
+if(INSTALL_TO_USER_DIR)
+    execute_process(COMMAND python3 -m site --user-site
+                    OUTPUT_VARIABLE PYTHON_SITE_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(APPEND PYTHON_SITE_PATH /remux)
+else()
+    string(APPEND PYTHON_SITE_PATH
+                  ${CMAKE_INSTALL_PREFIX}
+                  "/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
+                  "/site-packages"
+                  "/remux")
 endif()
 
 install(TARGETS remuxmodule DESTINATION ${PYTHON_SITE_PATH})
