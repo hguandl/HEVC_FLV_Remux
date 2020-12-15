@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #include <cJSON.h>
+#include <libavutil/common.h>
+#include <libavutil/error.h>
 
 #include "bili-live.h"
 #include "remux.h"
@@ -153,13 +155,21 @@ int main(int argc, const char *argv[]) {
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
 
     (void)signal(SIGINT, handler_stop);
-    int ret;
+    int ret, retry = 10;
     while (!keyboard_interrupt) {
         if (bili_update_room(room)) {
             bili_log("INFO", "%u - Online\n", room->room_id);
             ret = bili_download_stream(room, DEFAULT);
-            if (ret == -1) {
+            (void)signal(SIGINT, handler_stop);
+            if (ret == AVERROR_EXIT) {
                 break;
+            }
+            if (ret < 0) {
+                --retry;
+                if (retry <= 0) {
+                    retry = 10;
+                    sleep(300);
+                }
             }
         } else {
             bili_log("INFO", "%u - Offline. Waiting...\n", room->room_id);
@@ -194,6 +204,11 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
                              now->tm_hour, now->tm_min, now->tm_sec,
                              room->room_id);
     ret = remux(url, filename, room->ffmpeg_headers);
+
+    if (ret < 0) {
+        bili_log("ERROR", "%s\n", av_err2str(ret));
+    }
+
     free(url);
 
     return ret;

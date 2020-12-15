@@ -227,14 +227,8 @@ end:
     av_freep(&in_last_dts);
     av_freep(&out_last_dts);
 
-    if (ret == AVERROR_EXIT) {
-        fprintf(stderr, "%s\n", av_err2str(ret));
-        return -1;
-    }
-
     if (ret < 0 && ret != AVERROR_EOF) {
-        fprintf(stderr, "Error occurred: %s\n", av_err2str(ret));
-        return 1;
+        return ret;
     }
 
     return 0;
