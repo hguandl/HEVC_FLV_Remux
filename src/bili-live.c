@@ -11,10 +11,6 @@
 #include "bili-live.h"
 #include "remux.h"
 
-static size_t     max_api_size;
-static char       *ffmpeg_headers;
-struct curl_slist *curl_headers;
-
 static int keyboard_interrupt = 0;
 
 static void handler_stop(int sig) {
@@ -67,7 +63,6 @@ CURL *bili_make_handle() {
     curl_easy_setopt(handle, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip");
     curl_easy_setopt(handle, CURLOPT_USERAGENT, BILI_USER_AGENT);
-    curl_easy_setopt(handle, CURLOPT_HTTPHEADER, curl_headers);
 
     return handle;
 }
@@ -77,7 +72,21 @@ BILI_LIVE_ROOM *bili_make_room(uint32_t room_id) {
 
     room->room_id = room_id;
     room->handle = bili_make_handle();
+    room->referer = (char *)malloc(sizeof(char) * 4096);
     room->playurl_info = NULL;
+
+    struct curl_slist *curl_headers = NULL;
+    for (int i = 0; i < BILI_HTTP_HEADER_CNT; ++i) {
+        curl_headers = curl_slist_append(curl_headers, BILI_HTTP_API_HEADERS[i]);
+    }
+    sprintf(room->referer, "Referer: https://live.bilibili.com/%u", room_id);
+    curl_slist_append(curl_headers, room->referer);
+    curl_easy_setopt(room->handle, CURLOPT_HTTPHEADER, curl_headers);
+    room->curl_headers = curl_headers;
+
+    room->ffmpeg_headers = (char *)malloc(sizeof(char) * 4096);
+    sprintf(room->ffmpeg_headers, "%s\r\nReferer: %s\r\n",
+                                  BILI_HTTP_FLV_HEADERS, room->referer);
 
     return room;
 }
@@ -115,28 +124,23 @@ cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn) {
     return api_data;
 }
 
-char *bili_get_api_url(const BILI_LIVE_ROOM* room, int qn) {
-    char *url = (char *)malloc(sizeof(char) * max_api_size);
+char *bili_get_api_url(const BILI_LIVE_ROOM *room, int qn) {
+    char *url = (char *)malloc(sizeof(char) * 4096);
     sprintf(url, BILI_XLIVE_API_V2, room->room_id, qn);
     return url;
 }
 
 void bili_free_room(BILI_LIVE_ROOM *room) {
+    curl_slist_free_all(room->curl_headers);
     curl_easy_cleanup(room->handle);
+    free(room->referer);
+    free(room->ffmpeg_headers);
     cJSON_Delete(room->playurl_info);
     free(room);
     bili_log("INFO", "Exit safely. Bye~\n");
 }
 
 int main(int argc, const char *argv[]) {
-    max_api_size = strlen(BILI_XLIVE_API_V2) + 10 + 10 + 1;
-    ffmpeg_headers = (char *)malloc(strlen(BILI_USER_AGENT) + strlen("User-Agent: ") + 3);
-    sprintf(ffmpeg_headers, "User-Agent: %s\r\n", BILI_USER_AGENT);
-    curl_headers = NULL;
-    for (int i = 0; i < BILI_HTTP_HEADER_CNT; ++i) {
-        curl_headers = curl_slist_append(curl_headers, BILI_HTTP_HEADERS[i]);
-    }
-
     curl_global_init(CURL_GLOBAL_ALL);
 
     if (argc < 2) {
@@ -165,8 +169,6 @@ int main(int argc, const char *argv[]) {
 
     bili_free_room(room);
     curl_global_cleanup();
-    free(ffmpeg_headers);
-    curl_slist_free_all(curl_headers);
     return 0;
 }
 
@@ -191,7 +193,7 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
                              now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
                              now->tm_hour, now->tm_min, now->tm_sec,
                              room->room_id);
-    ret = remux(url, filename, ffmpeg_headers);
+    ret = remux(url, filename, room->ffmpeg_headers);
     free(url);
 
     return ret;
@@ -296,7 +298,7 @@ void bili_find_codec_qn(BILI_STREAM_CODEC *codec,
             *qn = hevc_best_qn;
             return;
         } else {
-            fprintf(stderr, "Stream not found for %s. Fallback to %s\n",
+            bili_log("WARN", "Stream not found for %s. Fallback to %s\n",
                             "HEVC", "AVC");
             *codec = AVC;
             *qn = avc_best_qn;

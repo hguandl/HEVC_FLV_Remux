@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define BILI_USER_AGENT (\
+#define BILI_USER_AGENT \
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6)"\
         " AppleWebKit/605.1.15 (KHTML, like Gecko)"\
-        " Version/14.0.1 Safari/605.1.15")
+        " Version/14.0.1 Safari/605.1.15"
 
 #define BILI_XLIVE_API_V2 (\
         "https://api.live.bilibili.com/xlive/web-room/v2/index"\
@@ -27,12 +27,21 @@ extern "C" {
         "&platform=web"\
         "&ptype=16")
 
-const char *BILI_HTTP_HEADERS[] = {
-    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9",
+const char *BILI_HTTP_API_HEADERS[] = {
+    "Pragma: no-cache",
+    "Accept: application/json, text/javascript, */*; q=0.01",
+    "Origin: https://live.bilibili.com",
+    "Cache-Control: no-cache",
     "Accept-Language: zh-cn",
 };
 
-const size_t BILI_HTTP_HEADER_CNT = 2;
+const char *BILI_HTTP_FLV_HEADERS =
+    "Accept: "       "*/*"           "\r\n"
+    "Cache-Control: ""max-age=0"     "\r\n"
+    "Origin: "       "null"          "\r\n"
+    "User-Agent: "   BILI_USER_AGENT "\r\n";
+
+const size_t BILI_HTTP_HEADER_CNT = 5;
 
 typedef struct {
     char   *response;
@@ -43,6 +52,10 @@ typedef struct {
     uint32_t room_id;
     CURL     *handle;
     cJSON    *playurl_info;
+
+    char              *referer;
+    char              *ffmpeg_headers;
+    struct curl_slist *curl_headers;
 } BILI_LIVE_ROOM;
 
 CURL *bili_make_handle();
