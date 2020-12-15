@@ -93,10 +93,12 @@ cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn) {
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_to_mem);
 
     res = curl_easy_perform(handle);
+    int retry = 5;
 
-    if (CURL_FORMADD_OK != res) {
-        fprintf(stderr, "cURL error\n");
-        return NULL;
+    while (CURL_FORMADD_OK != res && retry) {
+        bili_log("ERROR", "cURL error: %s\n", curl_easy_strerror(res));
+        res = curl_easy_perform(handle);
+        --retry;
     }
 
     cJSON *json = cJSON_Parse(mem.response);
