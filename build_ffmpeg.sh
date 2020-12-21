@@ -26,7 +26,8 @@ $PROJECT_ROOT/FFmpeg/configure \
                      --enable-protocol=file,http,httpproxy,https,tls_openssl \
                      --enable-openssl \
                      --disable-securetransport \
-                     --disable-asm
+                     --disable-asm \
+                     --extra-cflags=-fPIC
 
 make -j
 make install

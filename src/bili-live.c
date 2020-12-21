@@ -13,12 +13,6 @@
 #include "bili-live.h"
 #include "remux.h"
 
-static int keyboard_interrupt = 0;
-
-static void handler_stop(int sig) {
-    keyboard_interrupt = 1;
-}
-
 static int bili_log(const char *tag, const char *message, ...) {
     va_list args;
     va_start(args, message);
@@ -154,13 +148,11 @@ int main(int argc, const char *argv[]) {
     sscanf(argv[1], "%u", &room_id);
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
 
-    (void)signal(SIGINT, handler_stop);
     int ret, retry = 10;
-    while (!keyboard_interrupt) {
+    while (1) {
         if (bili_update_room(room)) {
             bili_log("INFO", "%u - Online\n", room->room_id);
             ret = bili_download_stream(room, DEFAULT);
-            (void)signal(SIGINT, handler_stop);
             if (ret == AVERROR_EXIT) {
                 break;
             }

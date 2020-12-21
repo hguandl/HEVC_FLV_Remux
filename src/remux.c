@@ -35,12 +35,6 @@
 
 #include "remux.h"
 
-static int keyboard_interrupt = 0;
-
-static void handler_stop(int sig) {
-    keyboard_interrupt = 1;
-}
-
 int remux(const char *in_filename, const char *out_filename, const char *http_headers)
 {
     AVOutputFormat *ofmt = NULL;
@@ -153,14 +147,7 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
         goto end;
     }
 
-    (void)signal(SIGINT, handler_stop);
-
     while (1) {
-        if (keyboard_interrupt) {
-            ret = AVERROR_EXIT;
-            break;
-        }
-
         AVStream *in_stream, *out_stream;
 
         ret = av_read_frame(ifmt_ctx, &pkt);
