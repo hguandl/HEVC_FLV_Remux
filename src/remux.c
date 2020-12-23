@@ -33,6 +33,7 @@
 #include <libavutil/timestamp.h>
 #include <libavformat/avformat.h>
 
+#include "libavutil/dict.h"
 #include "remux.h"
 
 int remux(const char *in_filename, const char *out_filename, const char *http_headers)
@@ -54,6 +55,9 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
 
     if (http_headers) {
         av_dict_set(&options, "headers", http_headers, AV_DICT_APPEND);
+        av_dict_set(&options, "reconnect_at_eof", "1", AV_DICT_APPEND);
+        av_dict_set(&options, "reconnect_streamed", "1", AV_DICT_APPEND);
+        av_dict_set(&options, "reconnect_delay_max", "5", AV_DICT_APPEND);
     }
 
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, &options)) < 0) {
