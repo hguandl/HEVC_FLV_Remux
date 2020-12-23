@@ -214,6 +214,7 @@ end:
         avio_closep(&ofmt_ctx->pb);
     avformat_free_context(ofmt_ctx);
 
+    av_dict_free(&options);
     av_freep(&stream_mapping);
     av_freep(&in_last_dts);
     av_freep(&out_last_dts);
