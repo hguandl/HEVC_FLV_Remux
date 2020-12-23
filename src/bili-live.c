@@ -148,7 +148,7 @@ int main(int argc, const char *argv[]) {
     sscanf(argv[1], "%u", &room_id);
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
 
-    int ret, retry = 10;
+    int ret, retry = 5;
     while (1) {
         if (bili_update_room(room)) {
             bili_log("INFO", "%u - Online\n", room->room_id);
@@ -160,7 +160,7 @@ int main(int argc, const char *argv[]) {
                 --retry;
                 if (retry <= 0) {
                     retry = 10;
-                    sleep(300);
+                    sleep(10);
                 }
             }
         } else {
