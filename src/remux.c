@@ -54,10 +54,12 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
     av_log_set_level(AV_LOG_WARNING);
 
     if (http_headers) {
+        av_dict_set(&options, "timeout", "5000", AV_DICT_APPEND);
         av_dict_set(&options, "headers", http_headers, AV_DICT_APPEND);
+        av_dict_set(&options, "multiple_requests", "1", AV_DICT_APPEND);
         av_dict_set(&options, "reconnect_at_eof", "1", AV_DICT_APPEND);
         av_dict_set(&options, "reconnect_streamed", "1", AV_DICT_APPEND);
-        av_dict_set(&options, "reconnect_delay_max", "5", AV_DICT_APPEND);
+        av_dict_set(&options, "reconnect_delay_max", "3", AV_DICT_APPEND);
     }
 
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, &options)) < 0) {
