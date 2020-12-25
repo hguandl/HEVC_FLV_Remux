@@ -34,7 +34,16 @@
 #include <libavformat/avformat.h>
 
 #include "libavutil/dict.h"
+#include "libavutil/error.h"
 #include "remux.h"
+
+static int keyboard_interrupt = 0;
+
+void handle_stop(int sig) {
+    if (sig == SIGUSR1) {
+        keyboard_interrupt = 1;
+    }
+}
 
 int remux(const char *in_filename, const char *out_filename, const char *http_headers)
 {
@@ -153,7 +162,9 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
         goto end;
     }
 
-    while (1) {
+    (void)signal(SIGUSR1, handle_stop);
+
+    while (!keyboard_interrupt) {
         AVStream *in_stream, *out_stream;
 
         ret = av_read_frame(ifmt_ctx, &pkt);
@@ -204,6 +215,11 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
 
         av_interleaved_write_frame(ofmt_ctx, &pkt);
         av_packet_unref(&pkt);
+    }
+
+    if (keyboard_interrupt) {
+        av_log(ofmt_ctx, AV_LOG_WARNING, "%s\n", "Keyboard interrupt received");
+        ret = AVERROR_EXIT;
     }
 
     av_write_trailer(ofmt_ctx);
