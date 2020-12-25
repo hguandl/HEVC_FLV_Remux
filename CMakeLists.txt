@@ -52,6 +52,8 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_custom_command(TARGET remuxmodule POST_BUILD COMMAND ${CMAKE_STRIP} -S remux.so)
 endif()
 
+option(INSTALL_TO_USER_DIR "Install Python module to user site" ON)
+
 if(INSTALL_TO_USER_DIR)
     execute_process(COMMAND python3 -m site --user-site
                     OUTPUT_VARIABLE PYTHON_SITE_PATH
