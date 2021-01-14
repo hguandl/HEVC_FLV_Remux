@@ -1,6 +1,7 @@
 #ifndef BILI_LIVE_H
 #define BILI_LIVE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -64,11 +65,11 @@ BILI_LIVE_ROOM *bili_make_room(uint32_t room_id);
 
 void bili_free_room(BILI_LIVE_ROOM *room);
 
-cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn);
+cJSON *bili_fetch_api(const BILI_LIVE_ROOM *room, int qn);
 
-char *bili_get_api_url(const BILI_LIVE_ROOM* room, int qn);
+char *bili_get_api_url(const BILI_LIVE_ROOM *room, int qn);
 
-int bili_update_room(BILI_LIVE_ROOM* room);
+bool bili_update_room(BILI_LIVE_ROOM *room);
 
 typedef enum {
     // Use best quality. If both codecs have the same quality:
@@ -102,13 +103,13 @@ const char *BILI_CODEC_STR(BILI_STREAM_CODEC codec) {
     }
 }
 
-int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option);
+int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option);
 
 void bili_find_codec_qn(BILI_STREAM_CODEC *codec,
                         int *qn,
                         cJSON *playurl_info, BILI_QUALITY_OPTION qn_option);
 
-char *bili_get_stream_url(const BILI_LIVE_ROOM* room,
+char *bili_get_stream_url(const BILI_LIVE_ROOM *room,
                           const BILI_STREAM_CODEC codec, const int qn);
 
 static const cJSON *bili_get_codecs(cJSON *playurl_info);

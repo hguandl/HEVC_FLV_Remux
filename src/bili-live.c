@@ -1,14 +1,10 @@
 #include <limits.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <cJSON.h>
 #include <libavutil/common.h>
 #include <libavutil/error.h>
 
@@ -108,7 +104,7 @@ BILI_LIVE_ROOM *bili_make_room(uint32_t room_id) {
     return room;
 }
 
-cJSON *bili_fetch_api(const BILI_LIVE_ROOM* room, int qn) {
+cJSON *bili_fetch_api(const BILI_LIVE_ROOM *room, int qn) {
     CURL     *handle = room->handle;
     CURLcode res;
     char     *api_url = bili_get_api_url(room, qn);
@@ -225,14 +221,14 @@ int main(int argc, const char *argv[]) {
     return 0;
 }
 
-int bili_update_room(BILI_LIVE_ROOM* room) {
+bool bili_update_room(BILI_LIVE_ROOM *room) {
     cJSON_Delete(room->playurl_info);
     room->playurl_info = bili_fetch_api(room, 0);
 
     return room->playurl_info && !cJSON_IsNull(room->playurl_info);
 }
 
-int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
+int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
     BILI_STREAM_CODEC codec;
     int qn;
     int ret;
@@ -299,7 +295,7 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
     return ret;
 }
 
-char *bili_get_stream_url(const BILI_LIVE_ROOM* room,
+char *bili_get_stream_url(const BILI_LIVE_ROOM *room,
                           const BILI_STREAM_CODEC codec, const int qn) {
     cJSON *playurl_info = bili_fetch_api(room, qn);
     const cJSON *codecs = bili_get_codecs(playurl_info);
