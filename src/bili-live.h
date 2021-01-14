@@ -87,7 +87,8 @@ typedef enum {
 
 typedef enum {
     AVC,
-    HEVC
+    HEVC,
+    AVC2HEVC
 } BILI_STREAM_CODEC;
 
 const char *BILI_CODEC_STR(BILI_STREAM_CODEC codec) {

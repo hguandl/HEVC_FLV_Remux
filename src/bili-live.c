@@ -1,4 +1,6 @@
+#include <limits.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +30,25 @@ static int bili_log(const char *tag, const char *message, ...) {
     int rc = vfprintf(stderr, fmt, args);
     va_end(args);
     return rc;
+}
+
+static void print_usage(const char *argv0) {
+    static const char *format =
+        "Usage: %s [-qh] [-o <quality option>] <room ID>\n"
+        "\n-q:  fetch API only\n"
+        "-h:  print usage\n"
+        "\nQuality options:\n"
+        "%d    HEVC_PRIORITY (default)\n"
+        "%d    AVC_PRIORITY\n"
+        "%d    HEVC_ONLY\n"
+        "%d    AVC_ONLY\n";
+
+    fprintf(stderr, format,
+            argv0,
+            HEVC_PRIORITY,
+            AVC_PRIORITY,
+            HEVC_ONLY,
+            AVC_ONLY);
 }
 
 static size_t write_to_mem(void *data, size_t size, size_t nmemb, void *userp) {
@@ -139,20 +160,50 @@ void bili_free_room(BILI_LIVE_ROOM *room) {
 int main(int argc, const char *argv[]) {
     curl_global_init(CURL_GLOBAL_ALL);
 
-    if (argc < 2) {
-        printf("Usage: %s <room ID>\n", argv[0]);
+    int ch, bili_qo = 0;
+    bool qoption = false;
+    while ((ch = getopt(argc, (char **)argv, "hqo:")) != -1) {
+        switch (ch) {
+            case 'o':
+                bili_qo = atoi(optarg);
+                break;
+            case 'h':
+                print_usage(argv[0]);
+                return 0;
+            case 'q':
+                qoption = true;
+                break;
+        }
+    }
+
+    if (bili_qo < 0 || bili_qo > 3) {
+        bili_log("WARN", "Quality option not valid\n");
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (argc - optind <= 0) {
+        bili_log("WARN", "Room ID not provided\n");
+        print_usage(argv[0]);
         return 1;
     }
 
     uint32_t room_id;
-    sscanf(argv[1], "%u", &room_id);
+    room_id = strtol(argv[optind], NULL, 10);
     BILI_LIVE_ROOM *room = bili_make_room(room_id);
+
+    if (qoption) {
+        printf("%s\n", cJSON_Print(bili_fetch_api(room, 0)));
+        bili_free_room(room);
+        curl_global_cleanup();
+        return 0;
+    }
 
     int ret, retry = 5;
     while (1) {
         if (bili_update_room(room)) {
             bili_log("INFO", "%u - Online\n", room->room_id);
-            ret = bili_download_stream(room, DEFAULT);
+            ret = bili_download_stream(room, bili_qo);
             if (ret == AVERROR_EXIT) {
                 break;
             }
@@ -185,8 +236,14 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
     BILI_STREAM_CODEC codec;
     int qn;
     int ret;
+    bool transcode_to_hevc = false;
 
     bili_find_codec_qn(&codec, &qn, room->playurl_info, qn_option);
+
+    if (codec == AVC2HEVC) {
+        codec = AVC;
+        transcode_to_hevc = true;
+    }
 
     char *url = bili_get_stream_url(room, codec, qn);
     char filename[4096];
@@ -197,45 +254,47 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
                              room->room_id);
     ret = remux(url, filename, room->ffmpeg_headers);
 
+    free(url);
+
     if (ret < 0) {
         bili_log("ERROR", "%s\n", av_err2str(ret));
     }
 
-    pid_t child = fork();
+    if (transcode_to_hevc) {
+        pid_t child = fork();
 
-    if (child == -1) {
-        bili_log("ERROR", "Cannot fork process.\n");
-    }
-
-    if (child == 0) {
-        char new_filename[4096];
-        strncpy(new_filename, filename, 4095);
-
-        char *ext = strstr(new_filename, ".mp4");
-        const char *suffix = "-hevc.mp4";
-
-        for (int i = 0; i < 9; ++i) {
-            *ext = suffix[i];
-            ++ext;
+        if (child == -1) {
+            bili_log("ERROR", "Cannot fork process.\n");
         }
-        *ext = '\0';
 
-        bili_log("INFO", "Transcoding to %s\n", new_filename);
+        if (child == 0) {
+            char new_filename[4096];
+            strncpy(new_filename, filename, 4095);
 
-        execlp("ffmpeg", "ffmpeg",
-               "-nostdin",
-               "-loglevel", "quiet",
-               "-i", filename,
-               "-c:v", "libx265",
-               "-x265-params", "log-level=error",
-               "-pix_fmt", "yuv420p10le",
-               "-tag:v", "hvc1",
-               "-c:a", "copy",
-               new_filename,
-               NULL);
+            char *ext = strstr(new_filename, ".mp4");
+            const char *suffix = "-hevc.mp4";
+
+            for (int i = 0; i < 9; ++i) {
+                *ext = suffix[i];
+                ++ext;
+            }
+            *ext = '\0';
+
+            bili_log("INFO", "Transcoding to %s\n", new_filename);
+
+            execlp("ffmpeg", "ffmpeg",
+                "-nostdin",
+                "-loglevel", "quiet",
+                "-i", filename,
+                "-c:v", "libx265",
+                "-x265-params", "log-level=error",
+                "-pix_fmt", "yuv420p10le",
+                "-tag:v", "hvc1",
+                "-c:a", "copy",
+                new_filename,
+                NULL);
+        }
     }
-
-    free(url);
 
     return ret;
 }
@@ -339,9 +398,9 @@ void bili_find_codec_qn(BILI_STREAM_CODEC *codec,
             *qn = hevc_best_qn;
             return;
         } else {
-            bili_log("WARN", "Stream not found for %s. Fallback to %s\n",
+            bili_log("WARN", "Stream not found for %s. Transcode from %s\n",
                             "HEVC", "AVC");
-            *codec = AVC;
+            *codec = AVC2HEVC;
             *qn = avc_best_qn;
             return;
         }
