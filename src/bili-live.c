@@ -201,6 +201,40 @@ int bili_download_stream(BILI_LIVE_ROOM* room, BILI_QUALITY_OPTION qn_option) {
         bili_log("ERROR", "%s\n", av_err2str(ret));
     }
 
+    pid_t child = fork();
+
+    if (child == -1) {
+        bili_log("ERROR", "Cannot fork process.\n");
+    }
+
+    if (child == 0) {
+        char new_filename[4096];
+        strncpy(new_filename, filename, 4095);
+
+        char *ext = strstr(new_filename, ".mp4");
+        const char *suffix = "-hevc.mp4";
+
+        for (int i = 0; i < 9; ++i) {
+            *ext = suffix[i];
+            ++ext;
+        }
+        *ext = '\0';
+
+        bili_log("INFO", "Transcoding to %s\n", new_filename);
+
+        execlp("ffmpeg", "ffmpeg",
+               "-nostdin",
+               "-loglevel", "quiet",
+               "-i", filename,
+               "-c:v", "libx265",
+               "-x265-params", "log-level=error",
+               "-pix_fmt", "yuv420p10le",
+               "-tag:v", "hvc1",
+               "-c:a", "copy",
+               new_filename,
+               NULL);
+    }
+
     free(url);
 
     return ret;
