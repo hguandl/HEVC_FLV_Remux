@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <libavutil/common.h>
@@ -264,6 +265,7 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
         }
 
         if (child == 0) {
+            int ffmpeg_ret;
             char new_filename[4096];
             strncpy(new_filename, filename, 4095);
 
@@ -278,17 +280,31 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
 
             bili_log("INFO", "Transcoding to %s\n", new_filename);
 
-            execlp("ffmpeg", "ffmpeg",
-                "-nostdin",
-                "-loglevel", "quiet",
-                "-i", filename,
-                "-c:v", "libx265",
-                "-x265-params", "log-level=error",
-                "-pix_fmt", "yuv420p10le",
-                "-tag:v", "hvc1",
-                "-c:a", "copy",
-                new_filename,
-                NULL);
+            pid_t grandchild = fork();
+
+            if (grandchild == -1) {
+                bili_log("ERROR", "Cannot fork process.\n");
+                exit(-1);
+            }
+
+            if (grandchild == 0) {
+                ffmpeg_ret = execlp("ffmpeg", "ffmpeg",
+                                    "-nostdin",
+                                    "-loglevel", "quiet",
+                                    "-i", filename,
+                                    "-c:v", "libx265",
+                                    "-x265-params", "log-level=error",
+                                    "-pix_fmt", "yuv420p10le",
+                                    "-tag:v", "hvc1",
+                                    "-c:a", "copy",
+                                    new_filename,
+                                    NULL);
+            } else {
+                wait(&ffmpeg_ret);
+                bili_log("INFO", "Transcoding done. Removing %s\n", filename);
+                remove(filename);
+                exit(0);
+            }
         }
     }
 
