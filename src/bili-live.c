@@ -299,11 +299,21 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
                                     "-c:a", "copy",
                                     new_filename,
                                     NULL);
+                if (ffmpeg_ret) {
+                    bili_log("ERROR", "FFmpeg not found.\n");
+                }
             } else {
                 wait(&ffmpeg_ret);
-                bili_log("INFO", "Transcoding done. Removing %s\n", filename);
-                remove(filename);
-                exit(0);
+                if (ffmpeg_ret == 0) {
+                    bili_log("INFO", "Transcoding done. Removing %s\n", filename);
+                    int del_ret = remove(filename);
+                    if (del_ret) {
+                        bili_log("ERROR", "Cannot delete %s\n", filename);
+                    }
+                } else {
+                    bili_log("ERROR", "Transcode failed.\n");
+                }
+                return AVERROR_EXIT;
             }
         }
     }
