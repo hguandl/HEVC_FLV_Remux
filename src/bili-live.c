@@ -12,19 +12,30 @@
 #include "bili-live.h"
 #include "remux.h"
 
-static int bili_log(const char *tag, const char *message, ...) {
+static int bili_log(const char *tag, const bool update, const char *message, ...) {
     va_list args;
     va_start(args, message);
 
     struct tm *now = time_now();
-    char fmt[4096];
+    char fmt[4096], *log_template;
 
-    snprintf(fmt, 4095, "%4d-%02d-%02d %02d:%02d:%02d  [%s] %s",
+    if (update) {
+        log_template = "\r%4d-%02d-%02d %02d:%02d:%02d  [%s] %s";
+    } else {
+        log_template = "%4d-%02d-%02d %02d:%02d:%02d  [%s] %s\n";
+    }
+
+    snprintf(fmt, 4095, log_template,
                         now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
                         now->tm_hour, now->tm_min, now->tm_sec,
                         tag, message);
 
     int rc = vfprintf(stderr, fmt, args);
+
+    if (update) {
+        fflush(stderr);
+    }
+
     va_end(args);
     return rc;
 }
@@ -119,7 +130,7 @@ cJSON *bili_fetch_api(const BILI_LIVE_ROOM *room, int qn) {
     int retry = 5;
 
     while (CURL_FORMADD_OK != res && retry) {
-        bili_log("ERROR", "cURL error: %s\n", curl_easy_strerror(res));
+        bili_log("ERROR", false, "cURL error: %s", curl_easy_strerror(res));
         res = curl_easy_perform(handle);
         --retry;
     }
@@ -151,7 +162,7 @@ void bili_free_room(BILI_LIVE_ROOM *room) {
     free(room->ffmpeg_headers);
     cJSON_Delete(room->playurl_info);
     free(room);
-    bili_log("INFO", "Exit safely. Bye~\n");
+    bili_log("INFO", false, "Exit safely. Bye~");
 }
 
 int main(int argc, const char *argv[]) {
@@ -174,13 +185,13 @@ int main(int argc, const char *argv[]) {
     }
 
     if (bili_qo < 0 || bili_qo > 3) {
-        bili_log("WARN", "Quality option not valid\n");
+        bili_log("WARN", false, "Quality option not valid");
         print_usage(argv[0]);
         return 1;
     }
 
     if (argc - optind <= 0) {
-        bili_log("WARN", "Room ID not provided\n");
+        bili_log("WARN", false, "Room ID not provided");
         print_usage(argv[0]);
         return 1;
     }
@@ -199,7 +210,7 @@ int main(int argc, const char *argv[]) {
     int ret, retry = 5;
     while (1) {
         if (bili_update_room(room)) {
-            bili_log("INFO", "%u - Online\n", room->room_id);
+            bili_log("INFO", false, "%u - Online", room->room_id);
             ret = bili_download_stream(room, bili_qo);
             if (ret == AVERROR_EXIT) {
                 break;
@@ -212,8 +223,8 @@ int main(int argc, const char *argv[]) {
                 }
             }
         } else {
-            bili_log("INFO", "%u - Offline. Waiting...\n", room->room_id);
-            sleep(300);
+            bili_log("INFO", true, "%u - Offline. Waiting...", room->room_id);
+            sleep(30);
         }
     }
 
@@ -254,14 +265,14 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
     free(url);
 
     if (ret < 0) {
-        bili_log("ERROR", "%s\n", av_err2str(ret));
+        bili_log("ERROR", false, "%s", av_err2str(ret));
     }
 
     if (transcode_to_hevc) {
         pid_t child = fork();
 
         if (child == -1) {
-            bili_log("ERROR", "Cannot fork process.\n");
+            bili_log("ERROR", false, "Cannot fork process.");
         }
 
         if (child == 0) {
@@ -278,12 +289,12 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
             }
             *ext = '\0';
 
-            bili_log("INFO", "Transcoding to %s\n", new_filename);
+            bili_log("INFO", false, "Transcoding to %s", new_filename);
 
             pid_t grandchild = fork();
 
             if (grandchild == -1) {
-                bili_log("ERROR", "Cannot fork process.\n");
+                bili_log("ERROR", false, "Cannot fork process.");
                 exit(-1);
             }
 
@@ -300,18 +311,18 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
                                     new_filename,
                                     NULL);
                 if (ffmpeg_ret) {
-                    bili_log("ERROR", "FFmpeg not found.\n");
+                    bili_log("ERROR", false, "FFmpeg not found.");
                 }
             } else {
                 wait(&ffmpeg_ret);
                 if (ffmpeg_ret == 0) {
-                    bili_log("INFO", "Transcoding done. Removing %s\n", filename);
+                    bili_log("INFO", false, "Transcoding done. Removing %s", filename);
                     int del_ret = remove(filename);
                     if (del_ret) {
-                        bili_log("ERROR", "Cannot delete %s\n", filename);
+                        bili_log("ERROR", false, "Cannot delete %s", filename);
                     }
                 } else {
-                    bili_log("ERROR", "Transcode failed.\n");
+                    bili_log("ERROR", false, "Transcode failed.");
                 }
                 return AVERROR_EXIT;
             }
@@ -327,7 +338,7 @@ char *bili_get_stream_url(const BILI_LIVE_ROOM *room,
     const cJSON *codecs = bili_get_codecs(playurl_info);
 
     const char *target_codec = BILI_CODEC_STR(codec);
-    bili_log("INFO", "Downloading: stream %s, quality %d\n", target_codec, qn);
+    bili_log("INFO", false, "Downloading: stream %s, quality %d", target_codec, qn);
 
     char *url = NULL;
 
@@ -420,7 +431,7 @@ void bili_find_codec_qn(BILI_STREAM_CODEC *codec,
             *qn = hevc_best_qn;
             return;
         } else {
-            bili_log("WARN", "Stream not found for %s. Transcode from %s\n",
+            bili_log("WARN", "Stream not found for %s. Transcode from %s",
                             "HEVC", "AVC");
             *codec = AVC2HEVC;
             *qn = avc_best_qn;
