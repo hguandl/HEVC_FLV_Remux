@@ -20,7 +20,7 @@ static int bili_log(const char *tag, const bool update, const char *message, ...
     char fmt[4096], *log_template;
 
     if (update) {
-        log_template = "\r%4d-%02d-%02d %02d:%02d:%02d  [%s] %s";
+        log_template = "%4d-%02d-%02d %02d:%02d:%02d  [%s] %s\r";
     } else {
         log_template = "%4d-%02d-%02d %02d:%02d:%02d  [%s] %s\n";
     }
