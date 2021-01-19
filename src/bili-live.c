@@ -210,7 +210,6 @@ int main(int argc, const char *argv[]) {
     int ret, retry = 5;
     while (1) {
         if (bili_update_room(room)) {
-            bili_log("INFO", false, "%u - Online", room->room_id);
             ret = bili_download_stream(room, bili_qo);
             if (ret == AVERROR_EXIT) {
                 break;
