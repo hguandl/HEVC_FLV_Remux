@@ -1,4 +1,5 @@
 #include <limits.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -207,6 +208,7 @@ int main(int argc, const char *argv[]) {
         return 0;
     }
 
+    (void)signal(SIGCHLD, SIG_IGN);
     int ret, retry = 5;
     while (1) {
         if (bili_update_room(room)) {
