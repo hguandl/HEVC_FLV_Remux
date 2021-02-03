@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -300,14 +301,23 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
             }
 
             if (grandchild == 0) {
+                int fd = open("/var/log/bili-live/ffmpeg.log",
+                              O_RDWR | O_CREAT,
+                              S_IRUSR | S_IWUSR);
+                if (fd == -1) {
+                    perror("Open log file");
+                } else {
+                    dup2(fd, 1);
+                    dup2(fd, 2);
+                    close(fd);
+                }
                 ffmpeg_ret = execlp("ffmpeg", "ffmpeg",
                                     "-nostdin",
-                                    "-loglevel", "quiet",
                                     "-i", filename,
                                     "-c:v", "libx265",
-                                    "-x265-params", "log-level=error",
                                     "-pix_fmt", "yuv420p10le",
                                     "-tag:v", "hvc1",
+                                    "-max_muxing_queue_size", "4096",
                                     "-c:a", "copy",
                                     new_filename,
                                     NULL);
