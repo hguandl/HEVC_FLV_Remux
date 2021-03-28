@@ -20,17 +20,15 @@ if (NOT ${PTHREAD_OPTION} EQUAL -1)
     list(APPEND FFmpeg_LINK_LIBRARIES -pthread)
 endif()
 
-SET(ENABLE_TARGET_EXPORT OFF)
-SET(CJSON_BUILD_SHARED_LIBS OFF)
-SET(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON)
-add_subdirectory(cJSON EXCLUDE_FROM_ALL)
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(remux STATIC src/remux.c)
+add_library(cjson STATIC cJSON-1.7.14/cJSON.c)
 add_library(remuxmodule MODULE src/remuxmodule.c)
 add_executable(remuxing src/remuxing.c)
 add_executable(bili-live src/bili-live.c)
 add_executable(flv_checker src/flv_checker.c)
+
+target_include_directories(cjson PUBLIC "cJSON-1.7.14")
 
 target_include_directories(remux PUBLIC src ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remux PUBLIC ${FFmpeg_LINK_LIBRARIES})
@@ -38,8 +36,8 @@ target_link_libraries(remux PUBLIC ${FFmpeg_LINK_LIBRARIES})
 target_include_directories(remuxing PUBLIC src ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remuxing PUBLIC remux ${FFmpeg_LINK_LIBRARIES})
 
-target_include_directories(bili-live PUBLIC src CURL::libcurl cJSON ${FFmpeg_INCLUDE_DIRS})
-target_link_libraries(bili-live PUBLIC CURL::libcurl cjson remux ${FFmpeg_LINK_LIBRARIES})
+target_include_directories(bili-live PUBLIC src "cJSON-1.7.14" ${CURL_INCLUDE_DIRS} ${FFmpeg_INCLUDE_DIRS})
+target_link_libraries(bili-live PUBLIC ${CURL_LIBRARIES} cjson remux ${FFmpeg_LINK_LIBRARIES})
 
 target_include_directories(remuxmodule PUBLIC src ${Python3_INCLUDE_DIRS} ${FFmpeg_INCLUDE_DIRS})
 target_link_libraries(remuxmodule PUBLIC ${Python3_LIBRARIES} ${FFmpeg_LINK_LIBRARIES} remux)
