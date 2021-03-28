@@ -15,6 +15,11 @@ if [ ! -d "ffmpeg-${FFMPEG_VERSION}" ]; then
 
     echo "Unpacking FFmpeg..."
     tar xf ffmpeg-${FFMPEG_VERSION}.tar.xz
+
+    echo "Patching FFmpeg..."
+    pushd $PROJECT_ROOT/ffmpeg-${FFMPEG_VERSION}
+    patch -p01 -i $PROJECT_ROOT/ffmpeg-4.x-hevc-flv.patch
+    popd
 fi
 popd
 
