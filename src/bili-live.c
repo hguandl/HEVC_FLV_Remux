@@ -44,7 +44,7 @@ static int bili_log(const char *tag, const bool update, const char *message, ...
 
 static void print_usage(const char *argv0) {
     static const char *format =
-        "Usage: %s [-qh] [-o <quality option>] <room ID>\n"
+        "Usage: %s [-qh] [-o <quality option>] [-d <log path>] <room ID>\n"
         "\n-q:  fetch API only\n"
         "-h:  print usage\n"
         "\nQuality options:\n"
