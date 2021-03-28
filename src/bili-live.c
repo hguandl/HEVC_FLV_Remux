@@ -172,17 +172,26 @@ int main(int argc, const char *argv[]) {
 
     int ch, bili_qo = 0;
     bool qoption = false;
-    while ((ch = getopt(argc, (char **)argv, "hqo:")) != -1) {
+    char log_path[BUFSIZ] = { 0 };
+    while ((ch = getopt(argc, (char **)argv, "hqo:d:")) != -1) {
         switch (ch) {
             case 'o':
                 bili_qo = atoi(optarg);
                 break;
-            case 'h':
-                print_usage(argv[0]);
-                return 0;
             case 'q':
                 qoption = true;
                 break;
+            case 'd':
+                if (strlen(optarg) > BUFSIZ) {
+                    bili_log("ERROR", false, "Log path too long");
+                    return 1;
+                }
+                strncpy(log_path, optarg, BUFSIZ);
+                break;
+            case 'h':
+            default:
+                print_usage(argv[0]);
+                return 0;
         }
     }
 
@@ -196,6 +205,12 @@ int main(int argc, const char *argv[]) {
         bili_log("WARN", false, "Room ID not provided");
         print_usage(argv[0]);
         return 1;
+    }
+
+    if (strlen(log_path) > 0) {
+        char log_env[BUFSIZ + 64];
+        sprintf(log_env, "FFREPORT=file=%s/%%p-%%t.log:level=32", log_path);
+        putenv(log_env);
     }
 
     uint32_t room_id;
@@ -301,20 +316,12 @@ int bili_download_stream(BILI_LIVE_ROOM *room, BILI_QUALITY_OPTION qn_option) {
             }
 
             if (grandchild == 0) {
-                int fd = open("/var/log/bili-live/ffmpeg.log",
-                              O_RDWR | O_CREAT,
-                              S_IRUSR | S_IWUSR);
-                if (fd == -1) {
-                    perror("Open log file");
-                } else {
-                    dup2(fd, 1);
-                    dup2(fd, 2);
-                    close(fd);
-                }
                 ffmpeg_ret = execlp("ffmpeg", "ffmpeg",
                                     "-nostdin",
+                                    "-loglevel", "quiet",
                                     "-i", filename,
                                     "-c:v", "libx265",
+                                    "-x265-params", "log-level=none",
                                     "-pix_fmt", "yuv420p10le",
                                     "-tag:v", "hvc1",
                                     "-max_muxing_queue_size", "4096",
@@ -442,7 +449,7 @@ void bili_find_codec_qn(BILI_STREAM_CODEC *codec,
             *qn = hevc_best_qn;
             return;
         } else {
-            bili_log("WARN", "Stream not found for %s. Transcode from %s",
+            bili_log("WARN", false, "Stream not found for %s. Transcode from %s",
                             "HEVC", "AVC");
             *codec = AVC2HEVC;
             *qn = avc_best_qn;
