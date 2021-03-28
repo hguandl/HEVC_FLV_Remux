@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.12)
 
 project(HEVC_FLV_Remux)
 
+include(GNUInstallDirs)
+
 find_package(Python3 REQUIRED COMPONENTS Development)
 find_package(CURL REQUIRED)
 
@@ -63,6 +65,7 @@ else()
                   "/site-packages")
 endif()
 
-install(TARGETS remuxmodule DESTINATION ${PYTHON_SITE_PATH})
-install(TARGETS remuxing)
-install(TARGETS bili-live)
+install(TARGETS remuxmodule
+                DESTINATION ${PYTHON_SITE_PATH})
+install(TARGETS bili-live
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
