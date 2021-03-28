@@ -58,7 +58,6 @@ int remux(const char *in_filename, const char *out_filename, const char *http_he
     int64_t *out_last_dts = NULL;
     AVDictionary *options = NULL;
 
-    av_register_all();
     avformat_network_init();
     av_log_set_level(AV_LOG_WARNING);
 

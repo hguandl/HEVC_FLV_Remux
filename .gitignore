@@ -9,3 +9,7 @@ FFmpeg-build
 
 ## VSCode
 .vscode
+
+## FFmpeg
+ffmpeg-*/
+ffmpeg-*.tar.*

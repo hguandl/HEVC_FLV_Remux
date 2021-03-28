@@ -1,16 +1,30 @@
 #!/usr/bin/env bash
 set -e
 
+FFMPEG_VERSION="4.3.2"
+FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+
 pushd `dirname $0`
 PROJECT_ROOT=`pwd`
+
+if [ ! -d "ffmpeg-${FFMPEG_VERSION}" ]; then
+    if [ ! -f "ffmpeg-${FFMPEG_VERSION}.tar.xz" ]; then
+        echo "Retriving FFmpeg source code..."
+        curl -fsLJOS ${FFMPEG_URL}
+    fi
+
+    echo "Unpacking FFmpeg..."
+    tar xf ffmpeg-${FFMPEG_VERSION}.tar.xz
+fi
 popd
 
 if [ ! -d $PROJECT_ROOT/build/FFmpeg/BuildFiles ]; then
     mkdir -p $PROJECT_ROOT/build/FFmpeg/BuildFiles
 fi
 
+echo "Configuring FFmpeg..."
 pushd $PROJECT_ROOT/build/FFmpeg/BuildFiles
-$PROJECT_ROOT/FFmpeg/configure \
+$PROJECT_ROOT/ffmpeg-${FFMPEG_VERSION}/configure \
                      --prefix=$PROJECT_ROOT/build/FFmpeg \
                      --disable-programs \
                      --disable-doc \
@@ -29,6 +43,7 @@ $PROJECT_ROOT/FFmpeg/configure \
                      --disable-asm \
                      --extra-cflags=-fPIC
 
+echo "Building FFmpeg..."
 make -j
 make install
 popd
